@@ -67,6 +67,59 @@ function setColumn(c, values) {
   }
 }
 
+// Get block spans from a possibility array
+function getBlockSpans(possibility) {
+  const spans = [];
+  let i = 0;
+  while (i < possibility.length) {
+    if (possibility[i] === CELL_FILLED) {
+      let start = i;
+      while (i < possibility.length && possibility[i] === CELL_FILLED) i++;
+      spans.push({ start, end: i - 1 });
+    } else {
+      i++;
+    }
+  }
+  return spans;
+}
+
+// Get which hint blocks can reach a given position in a line
+// Returns: { blocks: [{ value: number, index: number }], forced: value }
+function getLineBlockInfo(length, hints, known, pos) {
+  if (hints.length === 0) return { blocks: [], forced: null };
+  
+  const possibilities = generateLinePossibilities(length, hints, known);
+  if (possibilities.length === 0) return { blocks: [], forced: null };
+  
+  // Find which blocks can reach this position
+  const validBlocks = [];
+  for (let bi = 0; bi < hints.length; bi++) {
+    const canReach = possibilities.some(p => {
+      const spans = getBlockSpans(p);
+      return spans[bi] && spans[bi].start <= pos && pos <= spans[bi].end;
+    });
+    if (canReach) {
+      // Return both the value and the position index (1-indexed)
+      const ordinal = bi === 0 ? "1º" : bi === 1 ? "2º" : bi === 2 ? "3º" : `${bi + 1}º`;
+      validBlocks.push({ value: hints[bi], index: bi + 1, ordinal });
+    }
+  }
+  
+  // Check if forced (100% same value in all possibilities)
+  const first = possibilities[0][pos];
+  const allSame = possibilities.every(p => p[pos] === first);
+  const forced = (allSame && known[pos] !== first) ? first : null;
+  
+  return { blocks: validBlocks, forced };
+}
+
+// Get block info for a cell (row + column)
+function getCellBlockInfo(r, c) {
+  const rowInfo = getLineBlockInfo(state.cols, state.rowHints[r], state.grid[r], c);
+  const colInfo = getLineBlockInfo(state.rows, state.colHints[c], getColumn(c), r);
+  return { row: rowInfo, col: colInfo };
+}
+
 function renderBoard() {
   const boardHost = $("boardHost");
   const rowDepth = maxHintDepth(state.rowHints);
@@ -113,6 +166,44 @@ function renderBoard() {
       const v = state.grid[r][c];
       if (v === CELL_FILLED) cell.classList.add("filled");
       if (v === CELL_EMPTY) cell.classList.add("cross");
+
+      // Add hover tooltip with block info
+      if (state.suggestions.length > 0) {
+        let tooltipEl = null;
+        
+        cell.addEventListener("mouseenter", () => {
+          const info = getCellBlockInfo(r, c);
+          let html = "";
+          
+          if (info.row.blocks.length) {
+            const forced = info.row.forced === CELL_FILLED ? " ✓" : (info.row.forced === CELL_EMPTY ? " ✕" : "");
+            const blockStr = info.row.blocks
+              .map(b => `<span class="tt-row">${b.value} (${b.ordinal})</span>`)
+              .join(", ");
+            html += `<div class="tt-line">Linha: ${blockStr}${forced}</div>`;
+          }
+          if (info.col.blocks.length) {
+            const forced = info.col.forced === CELL_FILLED ? " ✓" : (info.col.forced === CELL_EMPTY ? " ✕" : "");
+            const blockStr = info.col.blocks
+              .map(b => `<span class="tt-col">${b.value} (${b.ordinal})</span>`)
+              .join(", ");
+            html += `<div class="tt-line">Coluna: ${blockStr}${forced}</div>`;
+          }
+          
+          if (html) {
+            tooltipEl = document.createElement("div");
+            tooltipEl.className = "cell-tooltip";
+            tooltipEl.innerHTML = html;
+            cell.appendChild(tooltipEl);
+          }
+        });
+        cell.addEventListener("mouseleave", () => {
+          if (tooltipEl) {
+            tooltipEl.remove();
+            tooltipEl = null;
+          }
+        });
+      }
 
       const suggestion = state.suggestions.find(s => s.r === r && s.c === c);
       if (suggestion) {

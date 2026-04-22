@@ -197,6 +197,63 @@ button:hover { filter: brightness(1.08); }
 
 .cell:hover { transform: scale(0.98); }
 
+/* Tooltip on hover - created dynamically */
+.cell-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1f2430;
+  border: 1px solid #31384a;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 11px;
+  white-space: normal;
+  z-index: 100;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  margin-bottom: 6px;
+  min-width: 160px;
+  text-align: left;
+}
+
+.cell-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #31384a;
+}
+
+.cell-tooltip .tt-line {
+  margin: 2px 0;
+}
+
+.cell-tooltip .tt-row {
+  color: #60a5fa;
+  font-weight: 700;
+}
+
+.cell-tooltip .tt-col {
+  color: #f87171;
+  font-weight: 700;
+}
+
+.cell.has-tooltip::before {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #31384a;
+  margin-bottom: -12px;
+  z-index: 100;
+  pointer-events: none;
+}
+
 .cell.filled { background: var(--filled); }
 .cell.cross::before, .cell.cross::after {
   content: "";
