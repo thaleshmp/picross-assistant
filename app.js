@@ -93,7 +93,7 @@ function getBlockSpans(possibility) {
 // Get which hint blocks can reach a given position in a line
 // Returns: { blocks: [{ value: number, index: number }], forced: value, emptyReason: string|null }
 function getLineBlockInfo(length, hints, known, pos) {
-  if (hints.length === 0) return { blocks: [], forced: null, emptyReason: "A dica está vazia — toda a linha/coluna deve ficar em branco." };
+  if (hints.length === 0) return { blocks: [], forced: null, emptyReason: t("explain_empty_clue") };
 
   const possibilities = generateLinePossibilities(length, hints, known);
   if (possibilities.length === 0) return { blocks: [], forced: null, emptyReason: null };
@@ -477,7 +477,7 @@ function findNextLogicalMoves() {
     }
     if (analysis.forced.length > 0) {
       for (const f of analysis.forced) {
-        const alreadyExplained = explanations.some(e => e.includes(`L${f.index + 1} C${c + 1}`));
+        const alreadyExplained = explanations.some(e => e.includes(t("cell_ref", f.index + 1, c + 1)));
         if (alreadyExplained) continue;
         explanations.push(buildExplanation(f.value, f.index, false, c, state.colHints[c], analysis));
       }
