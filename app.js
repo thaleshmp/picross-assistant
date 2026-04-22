@@ -739,14 +739,6 @@ if (typeof document !== "undefined") {
     }
   });
 
-  $("loadExampleBtn").addEventListener("click", () => {
-    try {
-      loadExample();
-    } catch (err) {
-      setStatus(err.message);
-    }
-  });
-
   $("clearBoardBtn").addEventListener("click", () => {
     state.grid = buildEmptyGrid(state.rows, state.cols);
     clearSuggestions();
