@@ -3,6 +3,13 @@ const CELL_UNKNOWN = 0;
 const CELL_FILLED = 1;
 const CELL_EMPTY = -1;
 
+// Delegates to window.t (set by i18n.js in the browser).
+// Uses const so it doesn't overwrite window.t as a function declaration would.
+// Falls back to returning the key so Node.js tests work without i18n.js.
+const t = (typeof window !== "undefined" && typeof window.t === "function")
+  ? (key, ...args) => window.t(key, ...args)
+  : (key) => key;
+
 let state = {
   rows: 15,
   cols: 20,
@@ -17,13 +24,13 @@ const $ = (id) => document.getElementById(id);
 function parseHints(text, expectedCount) {
   const lines = text.trim().split(/\n+/).map(x => x.trim());
   if (lines.length !== expectedCount) {
-    throw new Error(`Esperava ${expectedCount} linhas de dicas, mas encontrei ${lines.length}.`);
+    throw new Error(t("parse_wrong_count", expectedCount, lines.length));
   }
   return lines.map((line, idx) => {
     if (!line || line === "0") return [];
     const nums = line.split(/[\s,]+/).map(Number);
     if (nums.some(n => !Number.isInteger(n) || n <= 0)) {
-      throw new Error(`Dica inválida na linha ${idx + 1}: "${line}"`);
+      throw new Error(t("parse_invalid_hint", idx + 1, line));
     }
     return nums;
   });
@@ -99,7 +106,7 @@ function getLineBlockInfo(length, hints, known, pos) {
       return spans[bi] && spans[bi].start <= pos && pos <= spans[bi].end;
     });
     if (canReach) {
-      const ordinal = bi === 0 ? "1º" : bi === 1 ? "2º" : bi === 2 ? "3º" : `${bi + 1}º`;
+      const ordinal = t("ordinal", bi + 1);
       validBlocks.push({ value: hints[bi], index: bi + 1, ordinal });
     }
   }
@@ -183,18 +190,18 @@ function renderBoard() {
             const blockStr = info.row.blocks
               .map(b => `<span class="tt-row">${b.value} (${b.ordinal})</span>`)
               .join(", ");
-            html += `<div class="tt-line">Linha: ${blockStr}${forced}</div>`;
+            html += `<div class="tt-line">${t("tt_row_label")}: ${blockStr}${forced}</div>`;
           } else if (info.row.emptyReason) {
-            html += `<div class="tt-line">Linha: <span class="tt-empty">${info.row.emptyReason}</span></div>`;
+            html += `<div class="tt-line">${t("tt_row_label")}: <span class="tt-empty">${info.row.emptyReason}</span></div>`;
           }
           if (info.col.blocks.length) {
             const forced = info.col.forced === CELL_FILLED ? " ✓" : (info.col.forced === CELL_EMPTY ? " ✕" : "");
             const blockStr = info.col.blocks
               .map(b => `<span class="tt-col">${b.value} (${b.ordinal})</span>`)
               .join(", ");
-            html += `<div class="tt-line">Coluna: ${blockStr}${forced}</div>`;
+            html += `<div class="tt-line">${t("tt_col_label")}: ${blockStr}${forced}</div>`;
           } else if (info.col.emptyReason) {
-            html += `<div class="tt-line">Coluna: <span class="tt-empty">${info.col.emptyReason}</span></div>`;
+            html += `<div class="tt-line">${t("tt_col_label")}: <span class="tt-empty">${info.col.emptyReason}</span></div>`;
           }
           
           if (html) {
@@ -371,17 +378,17 @@ function explainForcedCell(cellIndex, possibilities, clues) {
     const overlapEnd = Math.min(...starts) + blockSize;
 
     if (earliest === latest) {
-      return `O bloco de ${blockSize} (bloco ${bi + 1} da dica) só cabe começando na posição ${earliest} → pinta direto.`;
+      return t("explain_single_block", blockSize, bi + 1, earliest);
     } else {
-      return `O bloco de ${blockSize} (bloco ${bi + 1} da dica) pode começar entre as posições ${earliest} e ${latest}, mas em qualquer caso cobre as posições ${overlapStart}–${overlapEnd} (sobreposição garantida).`;
+      return t("explain_overlap", blockSize, bi + 1, earliest, latest, overlapStart, overlapEnd);
     }
   }
 
-  return `Aparece como preenchida em todos os ${possibilities.length} arranjos possíveis.`;
+  return t("explain_all_arrangements", possibilities.length);
 }
 
 function explainForcedEmpty(cellIndex, possibilities, clues, lineLength) {
-  if (clues.length === 0) return "A dica está vazia — toda a linha/coluna deve ficar em branco.";
+  if (clues.length === 0) return t("explain_empty_clue");
 
   const allEmpty = possibilities.every(p => p[cellIndex] === CELL_EMPTY);
   if (!allEmpty) return null;
@@ -410,19 +417,21 @@ function explainForcedEmpty(cellIndex, possibilities, clues, lineLength) {
   }
 
   if (maxReachFromLeft >= 0 && minReachFromRight < lineLength) {
-    return `Fica no vão entre o bloco anterior (termina antes de ${maxReachFromLeft + 2}) e o próximo (começa depois de ${minReachFromRight}). Nenhum bloco alcança essa posição em nenhum arranjo possível.`;
+    return t("explain_gap", maxReachFromLeft + 2, minReachFromRight);
   } else if (maxReachFromLeft < 0) {
-    return `Fica antes do primeiro bloco em todos os ${possibilities.length} arranjos possíveis — nenhum bloco chega até aqui.`;
+    return t("explain_before_first", possibilities.length);
   } else {
-    return `Fica após o último bloco em todos os ${possibilities.length} arranjos possíveis — nenhum bloco chega até aqui.`;
+    return t("explain_after_last", possibilities.length);
   }
 }
 
 function buildExplanation(label, cellPos, isRow, lineIndex, clues, analysis) {
-  const dicaStr = clues.length ? `[${clues.join(", ")}]` : "[vazia]";
-  const origem = isRow ? `Linha ${lineIndex + 1}` : `Coluna ${lineIndex + 1}`;
-  const celula = isRow ? `L${lineIndex + 1} C${cellPos + 1}` : `L${cellPos + 1} C${lineIndex + 1}`;
-  const acao = label === CELL_FILLED ? "● PINTAR" : "✕ MARCAR X";
+  const dicaStr = clues.length ? `[${clues.join(", ")}]` : t("clue_empty_label");
+  const origem = isRow ? t("line_label", lineIndex + 1) : t("col_label", lineIndex + 1);
+  const celula = isRow
+    ? t("cell_ref", lineIndex + 1, cellPos + 1)
+    : t("cell_ref", cellPos + 1, lineIndex + 1);
+  const acao = label === CELL_FILLED ? t("action_fill") : t("action_cross");
 
   let motivo;
   if (label === CELL_FILLED) {
@@ -431,7 +440,7 @@ function buildExplanation(label, cellPos, isRow, lineIndex, clues, analysis) {
     motivo = explainForcedEmpty(cellPos, analysis.possibilities, clues, analysis.possibilities[0]?.length ?? 0);
   }
 
-  return `${acao}  ${celula}  (dica ${origem}: ${dicaStr})\n   ↳ ${motivo}`;
+  return `${acao}  ${celula}  (${t("clue_word")} ${origem}: ${dicaStr})\n   ↳ ${motivo}`;
 }
 
 function findNextLogicalMoves() {
@@ -442,7 +451,7 @@ function findNextLogicalMoves() {
     const known = state.grid[r];
     const analysis = analyzeLine(state.cols, state.rowHints[r], known);
     if (!analysis.valid) {
-      return { valid: false, moves: [], reason: `A linha ${r + 1} ficou impossível com as marcações atuais.` };
+      return { valid: false, moves: [], reason: t("status_impossible_row", r + 1) };
     }
     for (const item of analysis.forced) {
       moves.push({ r, c: item.index, type: item.value, source: "row", line: r });
@@ -458,7 +467,7 @@ function findNextLogicalMoves() {
     const known = getColumn(c);
     const analysis = analyzeLine(state.rows, state.colHints[c], known);
     if (!analysis.valid) {
-      return { valid: false, moves: [], reason: `A coluna ${c + 1} ficou impossível com as marcações atuais.` };
+      return { valid: false, moves: [], reason: t("status_impossible_col", c + 1) };
     }
     for (const item of analysis.forced) {
       const exists = moves.find(m => m.r === item.index && m.c === c);
@@ -480,7 +489,7 @@ function findNextLogicalMoves() {
     moves,
     reason: moves.length
       ? explanations.slice(0, 10).join("\n\n")
-      : "Nenhuma jogada lógica garantida encontrada no estado atual."
+      : t("status_no_moves_suggest")
   };
 }
 
@@ -505,9 +514,9 @@ function suggestMoves() {
   renderBoard();
 
   if (unique.length === 0) {
-    setStatus("Nenhuma jogada lógica certa encontrada.\nTalvez precise de mais informação ou de tentativa/backtracking.");
+    setStatus(t("status_no_moves_backtrack"));
   } else {
-    setStatus(`${unique.length} jogada(s) lógica(s) encontrada(s). Por quê?\n\n${result.reason}`);
+    setStatus(t("status_moves_found", unique.length, result.reason));
   }
 }
 
@@ -519,11 +528,11 @@ function solveOneStep() {
   }
   const unique = dedupeMoves(result.moves);
   if (unique.length === 0) {
-    setStatus("Não achei nenhuma jogada lógica garantida neste ponto.");
+    setStatus(t("status_no_moves_step"));
     return;
   }
   applyMoves(unique, true);
-  setStatus(`Apliquei ${unique.length} jogada(s) lógica(s).\n${result.reason}`);
+  setStatus(t("status_applied", unique.length, result.reason));
 }
 
 function dedupeMoves(moves) {
@@ -540,18 +549,18 @@ function validateBoard() {
   for (let r = 0; r < state.rows; r++) {
     const a = analyzeLine(state.cols, state.rowHints[r], state.grid[r]);
     if (!a.valid) {
-      setStatus(`Inválido: a linha ${r + 1} não pode mais satisfazer a dica.`);
+      setStatus(t("status_invalid_row", r + 1));
       return false;
     }
   }
   for (let c = 0; c < state.cols; c++) {
     const a = analyzeLine(state.rows, state.colHints[c], getColumn(c));
     if (!a.valid) {
-      setStatus(`Inválido: a coluna ${c + 1} não pode mais satisfazer a dica.`);
+      setStatus(t("status_invalid_col", c + 1));
       return false;
     }
   }
-  setStatus("Estado válido. Até aqui, as marcações ainda podem levar a uma solução.");
+  setStatus(t("status_valid"));
   return true;
 }
 
@@ -646,7 +655,7 @@ function solveAll() {
 
   const solved = backtrackingSolve(state.grid);
   if (!solved) {
-    setStatus("Não consegui resolver. O puzzle pode estar inconsistente ou exigir um estado inicial diferente.");
+    setStatus(t("status_no_solution"));
     return;
   }
 
@@ -662,7 +671,7 @@ function solveAll() {
   state.grid = solved;
   state.suggestions = changes;
   renderBoard();
-  setStatus(`Puzzle resolvido. ${changes.length} célula(s) foram preenchidas/confirmadas pelo solver.`);
+  setStatus(t("status_solved", changes.length));
 }
 
 function rebuildFromInputs() {
@@ -679,14 +688,14 @@ function rebuildFromInputs() {
   state.suggestions = [];
 
   renderBoard();
-  setStatus("Tabuleiro montado.");
+  setStatus(t("status_board_built"));
 }
 
 function loadExample() {
   $("rows").value = 15;
   $("cols").value = 20;
   rebuildFromInputs();
-  setStatus("Exemplo carregado. Esse é só um ponto de partida para você testar.");
+  setStatus(t("status_example_loaded"));
 }
 
 // Export for testing
@@ -742,7 +751,7 @@ if (typeof document !== "undefined") {
     state.grid = buildEmptyGrid(state.rows, state.cols);
     clearSuggestions();
     renderBoard();
-    setStatus("Marcações limpas.");
+    setStatus(t("status_marks_cleared"));
   });
 
   $("nextMoveBtn").addEventListener("click", suggestMoves);
@@ -751,7 +760,7 @@ if (typeof document !== "undefined") {
   $("validateBtn").addEventListener("click", validateBoard);
   $("clearSuggestionsBtn").addEventListener("click", () => {
     clearSuggestions();
-    setStatus("Sugestões limpas.");
+    setStatus(t("status_suggestions_cleared"));
   });
 
   // Initial load
