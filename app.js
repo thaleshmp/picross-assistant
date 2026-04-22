@@ -84,13 +84,13 @@ function getBlockSpans(possibility) {
 }
 
 // Get which hint blocks can reach a given position in a line
-// Returns: { blocks: [{ value: number, index: number }], forced: value }
+// Returns: { blocks: [{ value: number, index: number }], forced: value, emptyReason: string|null }
 function getLineBlockInfo(length, hints, known, pos) {
-  if (hints.length === 0) return { blocks: [], forced: null };
-  
+  if (hints.length === 0) return { blocks: [], forced: null, emptyReason: "A dica está vazia — toda a linha/coluna deve ficar em branco." };
+
   const possibilities = generateLinePossibilities(length, hints, known);
-  if (possibilities.length === 0) return { blocks: [], forced: null };
-  
+  if (possibilities.length === 0) return { blocks: [], forced: null, emptyReason: null };
+
   // Find which blocks can reach this position
   const validBlocks = [];
   for (let bi = 0; bi < hints.length; bi++) {
@@ -99,18 +99,21 @@ function getLineBlockInfo(length, hints, known, pos) {
       return spans[bi] && spans[bi].start <= pos && pos <= spans[bi].end;
     });
     if (canReach) {
-      // Return both the value and the position index (1-indexed)
       const ordinal = bi === 0 ? "1º" : bi === 1 ? "2º" : bi === 2 ? "3º" : `${bi + 1}º`;
       validBlocks.push({ value: hints[bi], index: bi + 1, ordinal });
     }
   }
-  
+
+  const emptyReason = validBlocks.length === 0
+    ? explainForcedEmpty(pos, possibilities, hints, length)
+    : null;
+
   // Check if forced (100% same value in all possibilities)
   const first = possibilities[0][pos];
   const allSame = possibilities.every(p => p[pos] === first);
   const forced = (allSame && known[pos] !== first) ? first : null;
-  
-  return { blocks: validBlocks, forced };
+
+  return { blocks: validBlocks, forced, emptyReason };
 }
 
 // Get block info for a cell (row + column)
@@ -181,6 +184,8 @@ function renderBoard() {
               .map(b => `<span class="tt-row">${b.value} (${b.ordinal})</span>`)
               .join(", ");
             html += `<div class="tt-line">Linha: ${blockStr}${forced}</div>`;
+          } else if (info.row.emptyReason) {
+            html += `<div class="tt-line">Linha: <span class="tt-empty">${info.row.emptyReason}</span></div>`;
           }
           if (info.col.blocks.length) {
             const forced = info.col.forced === CELL_FILLED ? " ✓" : (info.col.forced === CELL_EMPTY ? " ✕" : "");
@@ -188,6 +193,8 @@ function renderBoard() {
               .map(b => `<span class="tt-col">${b.value} (${b.ordinal})</span>`)
               .join(", ");
             html += `<div class="tt-line">Coluna: ${blockStr}${forced}</div>`;
+          } else if (info.col.emptyReason) {
+            html += `<div class="tt-line">Coluna: <span class="tt-empty">${info.col.emptyReason}</span></div>`;
           }
           
           if (html) {
@@ -713,42 +720,44 @@ if (typeof module !== "undefined" && module.exports) {
   };
 }
 
-// Initialize event listeners
-$("buildBtn").addEventListener("click", () => {
+// Initialize event listeners (browser only)
+if (typeof document !== "undefined") {
+  $("buildBtn").addEventListener("click", () => {
+    try {
+      rebuildFromInputs();
+    } catch (err) {
+      setStatus(err.message);
+    }
+  });
+
+  $("loadExampleBtn").addEventListener("click", () => {
+    try {
+      loadExample();
+    } catch (err) {
+      setStatus(err.message);
+    }
+  });
+
+  $("clearBoardBtn").addEventListener("click", () => {
+    state.grid = buildEmptyGrid(state.rows, state.cols);
+    clearSuggestions();
+    renderBoard();
+    setStatus("Marcações limpas.");
+  });
+
+  $("nextMoveBtn").addEventListener("click", suggestMoves);
+  $("solveStepBtn").addEventListener("click", solveOneStep);
+  $("solveAllBtn").addEventListener("click", solveAll);
+  $("validateBtn").addEventListener("click", validateBoard);
+  $("clearSuggestionsBtn").addEventListener("click", () => {
+    clearSuggestions();
+    setStatus("Sugestões limpas.");
+  });
+
+  // Initial load
   try {
     rebuildFromInputs();
   } catch (err) {
     setStatus(err.message);
   }
-});
-
-$("loadExampleBtn").addEventListener("click", () => {
-  try {
-    loadExample();
-  } catch (err) {
-    setStatus(err.message);
-  }
-});
-
-$("clearBoardBtn").addEventListener("click", () => {
-  state.grid = buildEmptyGrid(state.rows, state.cols);
-  clearSuggestions();
-  renderBoard();
-  setStatus("Marcações limpas.");
-});
-
-$("nextMoveBtn").addEventListener("click", suggestMoves);
-$("solveStepBtn").addEventListener("click", solveOneStep);
-$("solveAllBtn").addEventListener("click", solveAll);
-$("validateBtn").addEventListener("click", validateBoard);
-$("clearSuggestionsBtn").addEventListener("click", () => {
-  clearSuggestions();
-  setStatus("Sugestões limpas.");
-});
-
-// Initial load
-try {
-  rebuildFromInputs();
-} catch (err) {
-  setStatus(err.message);
 }

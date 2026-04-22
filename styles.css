@@ -241,6 +241,11 @@ button:hover { filter: brightness(1.08); }
   font-weight: 700;
 }
 
+.cell-tooltip .tt-empty {
+  color: #94a3b8;
+  font-style: italic;
+}
+
 .cell.has-tooltip::before {
   content: "";
   position: absolute;
