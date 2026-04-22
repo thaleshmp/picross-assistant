@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Picross Helper</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <h1>Picross Helper</h1>
+    <div class="sub">Arquivo único. Você define o puzzle, marca o tabuleiro, pede a próxima jogada lógica ou resolve tudo.</div>
+
+    <div class="layout">
+      <div class="left">
+        <div class="card">
+          <h2>Configuração</h2>
+
+          <div class="row">
+            <div class="field">
+              <label for="rows">Linhas</label>
+              <input id="rows" type="number" min="1" max="30" value="15" />
+            </div>
+            <div class="field">
+              <label for="cols">Colunas</label>
+              <input id="cols" type="number" min="1" max="30" value="20" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="rowHints">Dicas das linhas</label>
+            <textarea id="rowHints">4 1
+1 4 2
+3 1 3 1 1
+1 1 1 1 3 1
+1 3 1 2 1
+1 4 1 1 1
+5 1 1 1 4 1
+1 4 1 1 2 1
+2 3 3 2 1
+2 3 2 1 1
+2 2 2 1 1 1
+1 3 6
+6 1 1 1 1
+5 2 1 1
+4 1 1</textarea>
+            <div class="hint">Uma linha por linha do puzzle. Separe números por espaço. Use 0 para linha vazia.</div>
+          </div>
+
+          <div class="field" style="margin-top:10px;">
+            <label for="colHints">Dicas das colunas</label>
+            <textarea id="colHints">1 1
+2 2
+1 1 1 1
+2 1 1 1 1
+2 1 1 1 1
+1 2 1 1 1
+1 2 1 1 1
+1 3 2 1 1
+2 2 2 1 1
+1 2 1 1 1
+1 3 3 1 1
+2 2 1 1 1
+1 3 2
+2 4 2 2
+2 1 2 2 1
+6 3 1
+1 3 2 1
+5 4
+3 4
+3</textarea>
+            <div class="hint">Uma linha por coluna do puzzle.</div>
+          </div>
+
+          <div class="actions">
+            <button class="primary" id="buildBtn">Montar tabuleiro</button>
+            <button id="loadExampleBtn">Carregar exemplo</button>
+            <button class="bad" id="clearBoardBtn">Limpar marcações</button>
+          </div>
+
+          <div class="small">
+            Clique esquerdo: pinta. Clique direito: X. Clique de novo: limpa.
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 16px;">
+          <h2>Assistência</h2>
+          <div class="actions">
+            <button class="good" id="nextMoveBtn">Próxima jogada lógica</button>
+            <button class="warn" id="solveStepBtn">Aplicar 1 passo</button>
+            <button class="primary" id="solveAllBtn">Resolver tudo</button>
+            <button id="validateBtn">Validar estado</button>
+            <button id="clearSuggestionsBtn">Limpar sugestões</button>
+          </div>
+
+          <div class="legend">
+            <span class="l-filled">preto</span>
+            <span class="l-cross">X</span>
+            <span class="l-suggest">sugestão</span>
+            <span class="l-confirm">resolvido pelo solver</span>
+          </div>
+
+          <div class="status" id="status">
+Pronto.
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Tabuleiro</h2>
+        <div class="board-wrap">
+          <div id="boardHost"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
